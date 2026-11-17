@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { SecureAPI } from '../lib/secureApi';
+import { useAuth } from '../contexts/AuthContext.new';
 
 interface RevenueData {
     property_id: string;
+    property_name?: string;
+    timezone?: string;
     total_revenue: number;
     currency: string;
     reservations_count: number;
@@ -15,21 +18,26 @@ interface RevenueSummaryProps {
 }
 
 export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'prop-001', debugTenant, showRaw }) => {
+    const { user } = useAuth();
     const [data, setData] = useState<RevenueData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const activeTenant = debugTenant || 'candidate';
+    const activeTenant =
+        debugTenant ||
+        user?.tenant_id ||
+        user?.app_metadata?.tenant_id ||
+        user?.user_metadata?.tenant_id ||
+        undefined;
 
     useEffect(() => {
         const fetchRevenue = async () => {
             setLoading(true);
+            setError('');
             try {
                 // Use SecureAPI to handle authentication automatically
-                // We pass the simulatedTenant option which SecureAPI will attach as a header
                 const response = await SecureAPI.getDashboardSummary(propertyId, {
-                    simulatedTenant: activeTenant,
-                    timestamp: Date.now()
+                    simulatedTenant: debugTenant,
                 });
                 setData(response);
             } catch (err) {
@@ -41,7 +49,7 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
         };
 
         fetchRevenue();
-    }, [propertyId, activeTenant]);
+    }, [propertyId, activeTenant, debugTenant]);
 
     if (loading) {
         return (

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { SecureAPI } from '../lib/secureApi';
 import { authOptimizer } from '../utils/authOptimizer';
 import { sessionRecovery } from '../utils/sessionRecovery';
 import { sessionPersistenceManager } from '../utils/SessionPersistenceManager';
@@ -248,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.session) {
+        SecureAPI.setAccessToken(data.session.access_token);
         const enrichedUser = enrichUserWithTenant(data.session);
         setUser(enrichedUser);
         setIsAuthenticated(true);
@@ -273,6 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Logout flag set - blocking all session recovery');
 
       // 1. Clear storage IMMEDIATELY before anything else
+      SecureAPI.setAccessToken(null);
       localStorage.clear();
       sessionStorage.clear();
       console.log('[AuthContext] Storage cleared');

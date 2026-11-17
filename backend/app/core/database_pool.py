@@ -13,13 +13,28 @@ class DatabasePool:
         
     async def initialize(self):
         """Initialize database connection pool"""
+        if self.session_factory is not None:
+            return
         try:
-            # Create async engine with connection pooling
-            database_url = f"postgresql+asyncpg://{settings.supabase_db_user}:{settings.supabase_db_password}@{settings.supabase_db_host}:{settings.supabase_db_port}/{settings.supabase_db_name}"
-            
+            # Build asyncpg URL from settings.database_url
+            raw_url = getattr(settings, "database_url", None)
+            if not raw_url and hasattr(settings, "supabase_db_user"):
+                raw_url = (
+                    f"postgresql://{settings.supabase_db_user}:{settings.supabase_db_password}"
+                    f"@{settings.supabase_db_host}:{settings.supabase_db_port}/{settings.supabase_db_name}"
+                )
+            if not raw_url:
+                raise ValueError("DATABASE_URL is not configured")
+
+            if raw_url.startswith("postgresql://"):
+                database_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif raw_url.startswith("postgres://"):
+                database_url = raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            else:
+                database_url = raw_url
+
             self.engine = create_async_engine(
                 database_url,
-                poolclass=QueuePool,
                 pool_size=20,  # Number of connections to maintain
                 max_overflow=30,  # Additional connections when needed
                 pool_pre_ping=True,  # Validate connections
@@ -45,7 +60,7 @@ class DatabasePool:
         if self.engine:
             await self.engine.dispose()
     
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> AsyncSession:
         """Get database session from pool"""
         if not self.session_factory:
             raise Exception("Database pool not initialized")

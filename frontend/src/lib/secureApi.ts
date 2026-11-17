@@ -186,11 +186,14 @@ export class SecureAPIClient {
         // Check if it's a valid JWT
         else if (token.includes('.') && token.split('.').length === 3) {
           const payload = JSON.parse(atob(token.split('.')[1]));
-          extractedTenantId = payload.user_metadata?.tenant_id || payload.tenant_id;
+          extractedTenantId =
+            payload.user_metadata?.tenant_id ||
+            payload.app_metadata?.tenant_id ||
+            payload.tenant_id;
         }
 
         if (extractedTenantId) {
-          // Validate tenant ID format (should be UUID)
+          // Validate tenant ID format (should be UUID or valid tenant slug)
           if (this.isValidTenantId(extractedTenantId)) {
             this.cachedTenantId = extractedTenantId;
             return this.cachedTenantId;
@@ -224,7 +227,7 @@ export class SecureAPIClient {
       if (token) {
         const payload = JSON.parse(atob(token.split('.')[1]));
         // Use user sub (unique ID) + email as session key for isolation
-        const userSub = payload.sub;
+        const userSub = payload.sub || payload.id;
         const userEmail = payload.email;
 
         if (userSub && userEmail) {
@@ -243,9 +246,14 @@ export class SecureAPIClient {
    * Validate tenant ID format for security
    */
   private isValidTenantId(tenantId: string): boolean {
-    // Check for UUID format (basic validation)
+    // Check for UUID format or tenant slug (e.g., tenant-a, tenant-b)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return typeof tenantId === 'string' && tenantId.length > 0 && uuidRegex.test(tenantId);
+    const slugRegex = /^[a-z0-9][a-z0-9_-]{1,63}$/i;
+    return (
+      typeof tenantId === 'string' &&
+      tenantId.length > 0 &&
+      (uuidRegex.test(tenantId) || slugRegex.test(tenantId))
+    );
   }
 
   /**
@@ -467,10 +475,15 @@ export class SecureAPIClient {
    * Wait for a valid Supabase session (with timeout) so API calls don't race login.
    */
   private async waitForSession(timeoutMs: number = 7000): Promise<import('@supabase/supabase-js').Session | null> {
-    // Helper to read token from Supabase storage as last resort
+    // Helper to read token from Supabase/local storage as last resort
     const getTokenFromStorage = (): string | null => {
       try {
         if (typeof localStorage === 'undefined') return null;
+        const localAuthRaw = localStorage.getItem('base360-auth-token');
+        if (localAuthRaw) {
+          const parsedLocal = JSON.parse(localAuthRaw);
+          if (parsedLocal?.access_token) return parsedLocal.access_token;
+        }
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i) || '';
           if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
@@ -1449,6 +1462,15 @@ export class SecureAPIClient {
   }
 
   // ============= DASHBOARD API =============
+  /**
+   * Get tenant-isolated properties for the dashboard selector
+   */
+  async getDashboardProperties() {
+    return this.request<Array<{ id: string; tenant_id: string; name: string; timezone: string }>>(
+      '/api/v1/dashboard/properties'
+    );
+  }
+
   /**
    * Get dashboard summary with optional simulation header
    */

@@ -46,9 +46,11 @@ async def login(request: LoginRequest):
             # Create mock JWT token
             user_data = {
                 "id": "user-sunset",
+                "sub": "user-sunset",
                 "email": "sunset@propertyflow.com",
+                "tenant_id": "tenant-a",
                 "app_metadata": {"role": "user", "tenant_id": "tenant-a"},
-                "user_metadata": {"name": "Sunset Properties Manager"},
+                "user_metadata": {"name": "Sunset Properties Manager", "tenant_id": "tenant-a"},
                 "aud": "authenticated",
                 "created_at": datetime.utcnow().isoformat(),
                 "exp": datetime.utcnow() + timedelta(hours=24)
@@ -64,7 +66,9 @@ async def login(request: LoginRequest):
                     "name": "Sunset Properties Manager",
                     "is_admin": False,
                     "tenant_id": "tenant-a",
-                    "permissions": [],
+                    "app_metadata": {"role": "user", "tenant_id": "tenant-a"},
+                    "user_metadata": {"name": "Sunset Properties Manager", "tenant_id": "tenant-a"},
+                    "permissions": [{"section": "dashboard", "action": "read"}],
                     "cities": []
                 }
             )
@@ -76,9 +80,11 @@ async def login(request: LoginRequest):
             # Create mock JWT token
             user_data = {
                 "id": "user-ocean",
+                "sub": "user-ocean",
                 "email": "ocean@propertyflow.com",
+                "tenant_id": "tenant-b",
                 "app_metadata": {"role": "user", "tenant_id": "tenant-b"},
-                "user_metadata": {"name": "Ocean Rentals Manager"},
+                "user_metadata": {"name": "Ocean Rentals Manager", "tenant_id": "tenant-b"},
                 "aud": "authenticated",
                 "created_at": datetime.utcnow().isoformat(),
                 "exp": datetime.utcnow() + timedelta(hours=24)
@@ -94,7 +100,9 @@ async def login(request: LoginRequest):
                     "name": "Ocean Rentals Manager",
                     "is_admin": False,
                     "tenant_id": "tenant-b",
-                    "permissions": [],
+                    "app_metadata": {"role": "user", "tenant_id": "tenant-b"},
+                    "user_metadata": {"name": "Ocean Rentals Manager", "tenant_id": "tenant-b"},
+                    "permissions": [{"section": "dashboard", "action": "read"}],
                     "cities": []
                 }
             )
